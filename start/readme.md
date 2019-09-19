@@ -287,7 +287,7 @@ So now we have to figure out what we can do with this information.
 
 We could shove some shellcode in there vim 
 
-
+[ work in progress...  sorry]
 
 The final exploit :)
 
@@ -375,8 +375,6 @@ def exploit(conn):
     print("Stage2: Exploiting")
     print("Sending: {}".format(repr(stage2)))
     conn.sendline(stage2)
-
-
 
 def throwing_it():
 
