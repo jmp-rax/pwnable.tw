@@ -157,7 +157,7 @@ Disassembly of section .text:
  ; ssize_t read(int fd, void *buf, size_t count);
  ; read(0, ecx, 60)
  8048097:       cd 80                   int    0x80
- ; Clear the stack pointer of the 14 bytes we pushed onto the stack
+ ; Clear the stack pointer of the 20 bytes we pushed onto the stack
  8048099:       83 c4 14                add    esp,0x14
  ; return
  804809c:       c3                      ret
@@ -314,7 +314,75 @@ Essentially this means that the stack is executable. This is great because this 
 
 PIE means that a binary and all of its dependencies are located in random locations every time the binary is loaded. This makes ROP gadgets much harder since we won't know exactly where they are. Its fortunate for us that this is turned off.
 
+### Return Oriented Programming (ROP)
 
+ROP gadgets are an advanced form of stack smashing that avoids a non executable stack. They are borrowed chunks of code from the program or library we are trying to exploit but they always end in a return. When chained together its a Turing complete language. The only weakness is when you have too few of them. 
+
+We're going to use a program called Ropper to see what ROP gadgets we have. Ropper is great because you can use it to search for instructions or even build a complete shell code. You will see though that we don't have a lot to work with.
+
+```bash
+(ctf) > $ ropper --file start                                                   
+```
+
+```asm
+[INFO] Load gadgets from cache
+[LOAD] loading... 100%
+[LOAD] removing double gadgets... 100%
+
+Gadgets
+=======
+
+
+0x0804809b: adc al, 0xc3; pop esp; xor eax, eax; inc eax; int 0x80; 
+0x08048099: add esp, 0x14; ret; 
+0x080480a0: inc eax; int 0x80; 
+0x0804808f: int 0x80; 
+0x08048097: int 0x80; add esp, 0x14; ret; 
+0x08048085: je 0xae; mov ecx, esp; mov dl, 0x14; mov bl, 1; mov al, 4; int 0x80; 
+0x0804809a: les edx, ptr [ebx + eax*8]; pop esp; xor eax, eax; inc eax; int 0x80; 
+0x08048095: mov al, 3; int 0x80; 
+0x08048095: mov al, 3; int 0x80; add esp, 0x14; ret; 
+0x0804808d: mov al, 4; int 0x80; 
+0x0804808b: mov bl, 1; mov al, 4; int 0x80; 
+0x08048089: mov dl, 0x14; mov bl, 1; mov al, 4; int 0x80; 
+0x08048093: mov dl, 0x3c; mov al, 3; int 0x80; 
+0x08048093: mov dl, 0x3c; mov al, 3; int 0x80; add esp, 0x14; ret; 
+0x08048087: mov ecx, esp; mov dl, 0x14; mov bl, 1; mov al, 4; int 0x80; 
+0x0804809d: pop esp; xor eax, eax; inc eax; int 0x80; 
+0x08048090: xor byte ptr [ecx], 0xdb; mov dl, 0x3c; mov al, 3; int 0x80; 
+0x08048090: xor byte ptr [ecx], 0xdb; mov dl, 0x3c; mov al, 3; int 0x80; add esp, 0x14; ret; 
+0x0804809e: xor eax, eax; inc eax; int 0x80; 
+0x08048091: xor ebx, ebx; mov dl, 0x3c; mov al, 3; int 0x80; 
+0x08048091: xor ebx, ebx; mov dl, 0x3c; mov al, 3; int 0x80; add esp, 0x14; ret; 
+0x08048086: daa; mov ecx, esp; mov dl, 0x14; mov bl, 1; mov al, 4; int 0x80; 
+0x0804809c: ret; 
+
+23 gadgets found
+
+```
+
+We only found 23 Gadgets and the majority end up calling int 80. This means we won't be able to use them to build an execve command. There is something else we can do though.
+
+We know that the last thing we do before calling return is clearing the stack of the values we pushed onto it.
+
+```asm
+ 8048099:       83 c4 14                add    esp,0x14
+ 804809c:       c3                      ret
+```
+
+So lets take a look at the following gadget:
+
+```asm
+ 8048087:       89 e1                   mov    ecx,esp
+ 8048089:       b2 14                   mov    dl,0x14
+ 804808b:       b3 01                   mov    bl,0x1
+ 804808d:       b0 04                   mov    al,0x4
+ 804808f:       cd 80                   int    0x80
+```
+
+Since we cleared the stack of the variables we pushed onto it, this gadget basically loads the stack pointer into ecx and then writes it. This means that we have the top of the stack.
+
+After writing we end up calling read again. This means we smash the stack twice and we can insert shellcode and we have a general idea of where it will be.
 
 
 
