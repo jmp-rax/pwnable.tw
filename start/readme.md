@@ -285,9 +285,40 @@ So now we have to figure out what we can do with this information.
 
 ## Exploit development
 
-We could shove some shellcode in there vim 
+So lets callback to when we printed out the characteristics of the binary.
 
-[ work in progress...  sorry]
+```bash
+Arch:     i386-32-little
+RELRO:    No RELRO
+Stack:    No canary found
+NX:       NX disabled
+PIE:      No PIE (0x8048000)
+```
+lets quickly go through each of these and discuss what they mean for us.
+
+#### No RELocation Read Only (RELRO)
+
+Basically this means we could attack the binary by overwriting function calls within it. But this can only be used if we had dynamically loaded functions (Lazy Binding). Which we don't.
+
+#### No Stack Canary 
+
+Stack Canaries, much like a canary in the coal mine (where they get their name). Is used to detect when a stack buffer overflow occurs, by checking the canary before a routine uses the return pointer.
+
+This is great because we can actually use this.
+
+#### Non-eXcutable (NX) Disabled
+
+Essentially this means that the stack is executable. This is great because this means we can put shellcode in the buffer (located on the stack) and as we know the location of the buffer we can execute it.
+
+#### No Position Independent Execution (PIE)
+
+PIE means that a binary and all of its dependencies are located in random locations every time the binary is loaded. This makes ROP gadgets much harder since we won't know exactly where they are. Its fortunate for us that this is turned off.
+
+
+
+
+
+## THROW IT
 
 The final exploit :)
 
@@ -325,8 +356,8 @@ elif (len(sys.argv) > 1 and sys.argv[1] == '--debug'):
 entry_point = 0x08048060
 rop_gadget  = 0x08048087
 
-# Stack is going to get realigned by 20 bytes when we send 20 A's
-# but for some reason, the alignment is shifted by some value of
+# Stack pointer is going to get realigned by 20 bytes when we send 20 A's
+# but because of ASLR, the alignment is randomly shifted by some value of
 # [2A, 3A, 4A, 5A, 6A, 7A, 8A, 9A, AA, ..]
 # ESP always ends up as 0xFFFFFF?A and we always need to jump to 0xFFFFFF?4
 # So I guess just chose a random offset

